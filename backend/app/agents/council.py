@@ -235,10 +235,19 @@ def sanitize_and_validate_review_narrative(text: str, canonical_summary: Optiona
     return text
 
 
+from pydantic import BaseModel
+
+class AdversarialReviewOutput(BaseModel):
+    bull_case: str
+    bear_case: str
+    explanation: str
+
+
 class SignalCouncilOrchestrator:
     """
     The Root Agent orchestrator that coordinates specialized prompts
     to form a comprehensive, risk-aware financial decision intelligence report.
+    Exclusively powered by Gemini Flash models.
     """
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
@@ -251,55 +260,12 @@ class SignalCouncilOrchestrator:
             self._client = genai.Client(api_key=self.api_key)
         return self._client
 
-    async def _prompt_agent(self, identity: str, prompt: str, schema=None) -> str | FinalAnalysisResult:
-        # --- GROQ IMPLEMENTATION ---
-        import os
-        import json
-        from groq import AsyncGroq
-        
-        api_key = os.environ.get("GROQ_API_KEY")
+    async def _prompt_agent(self, identity: str, prompt: str, schema=None) -> Any:
+        api_key = self.api_key or os.environ.get("GEMINI_API_KEY")
         if not api_key:
-            raise Exception("GROQ_API_KEY environment variable is missing. Please export GROQ_API_KEY.")
-            
-        client = AsyncGroq(api_key=api_key)
-        
-        # We use a confirmed active model from the dynamic Groq roster
-        model_name = "openai/gpt-oss-120b"
-        
-        messages = [
-            {"role": "system", "content": identity},
-        ]
-        
-        kwargs = {
-            "model": model_name,
-            "temperature": 0.2
-        }
-        
-        if schema:
-            prompt += f"\n\nYou MUST output valid JSON exactly matching this schema: {json.dumps(schema.model_json_schema())}"
-            kwargs["response_format"] = {"type": "json_object"}
-            
-        messages.append({"role": "user", "content": prompt})
-        
-        for attempt in range(3):
-            try:
-                logger.info(f"Prompting agent: {identity.split('.')[0]} with Groq {model_name} (Attempt {attempt+1})...")
-                response = await client.chat.completions.create(messages=messages, **kwargs)
-                content = response.choices[0].message.content
-                logger.info(f"Agent {identity.split('.')[0]} responded successfully.")
-                if schema:
-                    return schema.model_validate_json(content)
-                return content
-            except Exception as e:
-                logger.warning(f"Groq agent failed: {e}")
-                if attempt == 2:
-                    raise e
-                import asyncio
-                await asyncio.sleep(2)
-                
-        """
-        # --- GEMINI IMPLEMENTATION (COMMENTED OUT) ---
-        config_kwargs = {
+            raise Exception("GEMINI_API_KEY environment variable is missing. Please export GEMINI_API_KEY.")
+
+        config_kwargs: Dict[str, Any] = {
             "system_instruction": identity,
             "temperature": 0.2
         }
@@ -309,22 +275,30 @@ class SignalCouncilOrchestrator:
             
         config = types.GenerateContentConfig(**config_kwargs)
         
-        # Try flash first, fallback to pro if overloaded
-        models_to_try = ['gemini-3.8-flash', 'gemini-3.8-pro']
+        # Exclusively use Gemini Flash models
+        flash_models_to_try = [
+            self.model,
+            'gemini-3.8-flash',
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash'
+        ]
+        seen = set()
+        flash_models = [m for m in flash_models_to_try if m and not (m in seen or seen.add(m))]
         last_error = None
         
-        for model_name in models_to_try:
+        for model_name in flash_models:
             for attempt in range(3):
                 try:
-                    logger.info(f"Prompting agent: {identity.split('.')[0]} with {model_name} (Attempt {attempt+1})...")
+                    logger.info(f"Prompting agent: {identity.split('.')[0]} with Gemini Flash model {model_name} (Attempt {attempt+1})...")
                     response = await self.client.aio.models.generate_content(
                         model=model_name,
                         contents=prompt,
                         config=config
                     )
-                    logger.info(f"Agent {identity.split('.')[0]} responded successfully.")
+                    logger.info(f"Agent {identity.split('.')[0]} responded successfully with {model_name}.")
                     if schema:
-                        if response.parsed:
+                        if hasattr(response, "parsed") and response.parsed:
                             return response.parsed
                         return schema.model_validate_json(response.text)
                     return response.text
@@ -332,13 +306,11 @@ class SignalCouncilOrchestrator:
                     logger.warning(f"Agent {identity.split('.')[0]} attempt {attempt+1} failed with {model_name}: {e}")
                     last_error = e
                     if attempt < 2 and ("503" in str(e) or "429" in str(e)):
-                        import asyncio
                         await asyncio.sleep(2 * (attempt + 1))
                         continue
-                    break # Break retry loop, try next model
+                    break # Break retry loop for this model, try next flash model
         
-        raise Exception(f"All models failed. Last error: {last_error}")
-        """
+        raise Exception(f"All Gemini Flash models failed. Last error: {last_error}")
 
     async def stress_test_trade_thesis(
         self, 
@@ -367,12 +339,6 @@ class SignalCouncilOrchestrator:
             "11. A non-overlapping block sensitivity analysis IS PROVIDED in the canonical summary. You MUST NEVER state, imply, or synthesize that sensitivity analysis was omitted, absent, missing, or not conducted.\n"
             "12. Event-driven portfolio simulation is exploratory (+0.88% return, 7.37% drawdown with retrospective analogue selection), confirming chronological accounting mechanics, but MUST NOT be claimed as a validated profitable trading strategy or override failed walk-forward validation. Benchmark comparison establishes NO_ALPHA_ESTABLISHED."
         )
-
-        from pydantic import BaseModel
-        class AdversarialReviewOutput(BaseModel):
-            bull_case: str
-            bear_case: str
-            explanation: str
 
         prompt = (
             f"Perform an Adversarial Trade Thesis Stress Test for {base_result.symbol} ({base_result.timeframe}):\n\n"

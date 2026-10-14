@@ -8,8 +8,8 @@ logger = logging.getLogger(__name__)
 class ChartParserAgent:
     """
     Multimodal agent responsible for reading chart images and extracting deterministic observations.
-    Supports Gemini multimodal vision when GEMINI_API_KEY is available.
-    Gracefully falls back when only text LLMs (like Groq) are active.
+    Supports Gemini Flash multimodal vision when GEMINI_API_KEY is available.
+    Gracefully falls back to baseline technical observations when offline or API key is not set.
     """
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
@@ -17,7 +17,7 @@ class ChartParserAgent:
     async def analyze_chart(self, image_bytes: bytes, mime_type: str = "image/png") -> ChartObservation:
         gemini_key = self.api_key or os.environ.get("GEMINI_API_KEY")
         
-        # 1. Try Gemini Multimodal Vision if key is available
+        # 1. Try Gemini Flash Multimodal Vision if key is available
         if gemini_key:
             try:
                 from google import genai
@@ -47,10 +47,8 @@ class ChartParserAgent:
             except Exception as e:
                 logger.warning(f"Gemini chart vision parsing failed ({e}); falling back.")
 
-        # 2. If using Groq: Groq models (openai/gpt-oss-120b, qwen, etc.) are strictly text-only
-        # and reject image_url payloads with 'messages[0].content must be a string'.
-        # We provide a safe, structured baseline observation instead of failing with HTTP 400.
-        logger.info("Multimodal screenshot parsing skipped: Groq active models are text-only. To enable visual chart parsing, export GEMINI_API_KEY.")
+        # 2. Provide safe, structured baseline observation when API key is unavailable or request fails
+        logger.info("Multimodal screenshot parsing skipped: GEMINI_API_KEY not configured. To enable visual chart parsing, export GEMINI_API_KEY.")
         return ChartObservation(
             visible_timeframe="Auto",
             chart_type="Candlestick",

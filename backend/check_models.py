@@ -1,24 +1,22 @@
 import os
-import requests
+from google import genai
 
 def main():
-    api_key = os.environ.get("GROQ_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
-        print("Please export GROQ_API_KEY first.")
+        print("Please export GEMINI_API_KEY first.")
         return
         
-    response = requests.get(
-        "https://api.groq.com/openai/v1/models",
-        headers={"Authorization": f"Bearer {api_key}"}
-    )
-    
-    if response.status_code == 200:
-        models = response.json().get("data", [])
-        print("\n--- ACTIVE GROQ MODELS ---")
+    try:
+        client = genai.Client(api_key=api_key)
+        models = client.models.list()
+        print("\n--- ACTIVE GEMINI FLASH MODELS ---")
         for m in models:
-            print(f"- {m['id']}")
-    else:
-        print(f"Error fetching models: {response.status_code} {response.text}")
+            name = getattr(m, "name", str(m))
+            if "flash" in name.lower():
+                print(f"- {name}")
+    except Exception as e:
+        print(f"Error fetching models: {e}")
 
 if __name__ == "__main__":
     main()
