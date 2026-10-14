@@ -251,7 +251,7 @@ class SignalCouncilOrchestrator:
     """
     def __init__(self, api_key: str | None = None):
         self.api_key = api_key or os.environ.get("GEMINI_API_KEY")
-        self.model = 'gemini-3.8-flash'
+        self.model = os.environ.get("DEFAULT_GEMINI_MODEL", "gemini-flash-lite-latest")
         self._client = None
 
     @property
@@ -275,13 +275,15 @@ class SignalCouncilOrchestrator:
             
         config = types.GenerateContentConfig(**config_kwargs)
         
-        # Exclusively use Gemini Flash models
+        # Exclusively use active, non-deprecated Gemini Flash models
         flash_models_to_try = [
             self.model,
+            'gemini-flash-lite-latest',
+            'gemini-3-flash-preview',
+            'gemini-3.1-flash-lite',
+            'gemini-3.5-flash',
             'gemini-3.8-flash',
-            'gemini-2.5-flash',
-            'gemini-2.0-flash',
-            'gemini-1.5-flash'
+            'gemini-flash-latest'
         ]
         seen = set()
         flash_models = [m for m in flash_models_to_try if m and not (m in seen or seen.add(m))]

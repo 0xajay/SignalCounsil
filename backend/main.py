@@ -24,11 +24,13 @@ from app.agents.council import SignalCouncilOrchestrator
 from app.domain.backtest import BacktestEngine
 from app.domain.stress_tester import TradeThesisStressTester
 
-app = FastAPI(title="SignalCouncil API")
+from app.config import settings
+
+app = FastAPI(title="SignalCouncil API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -120,14 +122,24 @@ class BacktestResponse(BaseModel):
     timeframe: str
     results: List[StrategyBacktestResult]
 
-@app.get("/api/v1/health")
-def health_check():
-    return {"status": "ok"}
-
 import logging
 
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log_level = getattr(logging, settings.log_level, logging.INFO)
+logging.basicConfig(level=log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+@app.get("/health", tags=["Health"])
+@app.get("/healthz", tags=["Health"])
+@app.get("/api/v1/health", tags=["Health"])
+@app.get("/", tags=["Health"])
+def health_check():
+    """Lightweight health check endpoint returning service status without exposing credentials."""
+    return {
+        "status": "healthy",
+        "service": "signal-council-api",
+        "version": "1.0.0",
+        "environment": settings.environment,
+    }
 
 @app.post("/api/v1/analyze", response_model=AnalyzeResponse)
 async def analyze_symbol(request: AnalyzeRequest):
@@ -357,3 +369,9 @@ async def backtest_symbol(request: AnalyzeRequest):
         timeframe=request.timeframe,
         results=results
     )
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host=settings.host, port=settings.port, reload=(settings.environment == "development"))
+

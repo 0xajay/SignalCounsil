@@ -28,22 +28,28 @@ class ChartParserAgent:
                     "the structural information requested. Do not make any buy or sell decisions. "
                     "Simply describe what is visible on the chart accurately."
                 )
-                logger.info("Parsing chart with Gemini Vision (gemini-3.8-flash)...")
-                response = await client.aio.models.generate_content(
-                    model="gemini-3.8-flash",
-                    contents=[
-                        types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
-                        prompt
-                    ],
-                    config=types.GenerateContentConfig(
-                        response_mime_type="application/json",
-                        response_schema=ChartObservation,
-                        temperature=0.0
-                    )
-                )
-                if response.parsed:
-                    return response.parsed
-                return ChartObservation.model_validate_json(response.text)
+                vision_models = ["gemini-flash-lite-latest", "gemini-3-flash-preview", "gemini-3.8-flash", "gemini-flash-latest"]
+                for model_name in vision_models:
+                    try:
+                        logger.info(f"Parsing chart with Gemini Vision ({model_name})...")
+                        response = await client.aio.models.generate_content(
+                            model=model_name,
+                            contents=[
+                                types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
+                                prompt
+                            ],
+                            config=types.GenerateContentConfig(
+                                response_mime_type="application/json",
+                                response_schema=ChartObservation,
+                                temperature=0.0
+                            )
+                        )
+                        if response.parsed:
+                            return response.parsed
+                        return ChartObservation.model_validate_json(response.text)
+                    except Exception as model_err:
+                        logger.warning(f"Vision model {model_name} failed: {model_err}")
+                        continue
             except Exception as e:
                 logger.warning(f"Gemini chart vision parsing failed ({e}); falling back.")
 
