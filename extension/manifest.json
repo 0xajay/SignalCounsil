@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "SignalCouncil",
+  "version": "1.0.0",
+  "description": "Multi-strategy financial decision intelligence.",
+  "permissions": ["sidePanel", "tabs", "scripting", "activeTab"],
+  "host_permissions": ["<all_urls>"],
+  "action": {
+    "default_title": "SignalCouncil"
+  },
+  "side_panel": {
+    "default_path": "index.html"
+  },
+  "background": {
+    "service_worker": "src/background.ts",
+    "type": "module"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "SignalCouncil",
+  "version": "1.0.0",
+  "description": "AI-powered multi-strategy financial decision intelligence.",
+  "action": {
+    "default_popup": "index.html",
+    "default_title": "Open SignalCouncil"
+  },
+  "permissions": [
+    "sidePanel",
+    "tabs",
+    "scripting",
+    "activeTab",
+    "storage"
+  ],
+  "host_permissions": [
+    "http://localhost:8080/*",
+    "https://*.tradingview.com/*"
+  ]
+}
