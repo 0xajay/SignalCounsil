@@ -1,19 +1,20 @@
 FROM python:3.12-slim
 
-# Install uv
-RUN pip install uv
-
+# Set working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY backend/pyproject.toml backend/uv.lock ./
+# Set environment variables for production python
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app \
+    PORT=8080
 
-# Install dependencies using uv
-RUN uv sync --frozen --no-dev
+# Install dependencies
+COPY backend/requirements.txt /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt
 
-# Copy backend code
+# Copy backend application source
 COPY backend /app/backend
 
-# Set python path and command
-ENV PYTHONPATH=/app
-CMD ["uv", "run", "uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8080"]
+# Start uvicorn listening dynamically on Cloud Run's $PORT
+CMD exec uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-8080}

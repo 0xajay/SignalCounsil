@@ -1,0 +1,33 @@
+# Git & IDE
+.git
+.gitignore
+.gemini
+.agents
+.vscode
+.idea
+
+# Python artifacts & virtual environments
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+.venv
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# Frontend & node artifacts
+node_modules/
+extension/node_modules/
+extension/dist/
+
+# Documentation & tests not needed in runtime container
+tests/
+docs/

@@ -3,7 +3,7 @@
   "name": "SignalCouncil",
   "version": "1.0.0",
   "description": "Multi-strategy financial decision intelligence.",
-  "permissions": ["sidePanel", "tabs", "scripting", "activeTab"],
+  "permissions": ["sidePanel", "tabs", "scripting", "activeTab", "storage"],
   "host_permissions": ["<all_urls>"],
   "action": {
     "default_title": "SignalCouncil"
