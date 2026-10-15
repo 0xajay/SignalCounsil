@@ -1,7 +1,7 @@
 # SignalCouncil — Trade Thesis Stress Tester
 
 > **AI-Powered Multi-Strategy Financial Decision Intelligence for Indian Equities**  
-> **Tagline:** *Only Indian NSE market stocks are supported for now.*
+> *Only Indian NSE market stocks are supported for now.*
 
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688.svg)](https://fastapi.tiangolo.com/)
