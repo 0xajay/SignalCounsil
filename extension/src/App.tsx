@@ -4,7 +4,8 @@ import {
   ChevronUp, Database, FileText, Layers, 
   Scale, ShieldAlert, Target, TrendingDown, 
   TrendingUp, Sliders, Clock, Zap,
-  Network, History, Info, RefreshCw, Globe
+  Network, History, Info, RefreshCw, Globe,
+  Settings as SettingsIcon, CheckCircle2, XCircle
 } from 'lucide-react'
 import './index.css'
 import { 
@@ -13,6 +14,8 @@ import {
   cleanSymbol,
   detectActiveChart 
 } from './utils/chartDetection'
+import { getApiBaseUrl, setApiBaseUrl, DEFAULT_API_URL } from './config'
+
 
 interface InstrumentMetadata {
   symbol: string
@@ -810,6 +813,20 @@ export default function App() {
   const [isDetecting, setIsDetecting] = useState<boolean>(false)
   const userEditedSymbolRef = useRef<boolean>(false)
 
+  // API Configuration & Endpoint States
+  const [apiBaseUrl, setApiBaseUrlState] = useState<string>(DEFAULT_API_URL)
+  const [showApiModal, setShowApiModal] = useState<boolean>(false)
+  const [apiInputVal, setApiInputVal] = useState<string>(DEFAULT_API_URL)
+  const [apiTestStatus, setApiTestStatus] = useState<{ testing: boolean; success?: boolean; message?: string } | null>(null)
+
+  useEffect(() => {
+    getApiBaseUrl().then((url) => {
+      setApiBaseUrlState(url)
+      setApiInputVal(url)
+    })
+  }, [])
+
+
   const runDetection = useCallback(async (forceApply = false) => {
     setIsDetecting(true)
     try {
@@ -911,8 +928,9 @@ export default function App() {
 
     try {
       const screenshot = await captureChartScreenshot()
+      const activeBase = await getApiBaseUrl()
 
-      const res = await fetch('http://localhost:8000/api/v1/analyze', {
+      const res = await fetch(`${activeBase}/api/v1/analyze`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -1110,6 +1128,50 @@ export default function App() {
         <div style={{ display: 'inline-block', margin: '6px 0 0', padding: '3px 10px', background: 'rgba(59, 130, 246, 0.15)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '20px', fontSize: '11px', color: '#93c5fd', fontWeight: 600, letterSpacing: '0.8px', textTransform: 'uppercase' }}>
           Trade Thesis Stress Tester
         </div>
+        <div style={{ marginTop: '8px' }}>
+          <span style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            padding: '4px 12px',
+            background: 'rgba(245, 158, 11, 0.12)',
+            border: '1px solid rgba(245, 158, 11, 0.35)',
+            borderRadius: '20px',
+            fontSize: '11px',
+            color: '#fbbf24',
+            fontWeight: 600,
+            letterSpacing: '0.2px'
+          }}>
+            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#fbbf24', boxShadow: '0 0 6px #fbbf24' }} />
+            Only Indian NSE market stocks are supported for now
+          </span>
+        </div>
+        <div style={{ marginTop: '10px' }}>
+          <button
+            type="button"
+            onClick={() => {
+              setApiInputVal(apiBaseUrl)
+              setApiTestStatus(null)
+              setShowApiModal(true)
+            }}
+            title="Configure Backend API Server (Cloud Run / Local)"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '4px 12px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              borderRadius: '20px',
+              color: '#94a3b8',
+              fontSize: '11px',
+              cursor: 'pointer'
+            }}
+          >
+            <SettingsIcon size={12} color="#60a5fa" />
+            <span>API: {apiBaseUrl.replace(/^https?:\/\//, '').slice(0, 24)}{apiBaseUrl.length > 30 ? '...' : ''}</span>
+          </button>
+        </div>
       </div>
 
       <div className="glass-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1173,7 +1235,7 @@ export default function App() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Globe size={14} style={{ color: '#64748b' }} />
-              <span>Open a chart on TradingView, NSE or NASDAQ to auto-fill</span>
+              <span>Open an Indian NSE chart on TradingView (e.g. RELIANCE, NIFTY) to auto-fill</span>
             </div>
             <button
               type="button"
@@ -1218,7 +1280,7 @@ export default function App() {
             placeholder={
               detectedChart 
                 ? `e.g. ${detectedChart.rawSymbol}` 
-                : "e.g. AAPL, RELIANCE, TSLA"
+                : "e.g. RELIANCE, TCS, INFY, NIFTY 50 (NSE only)"
             }
             style={{ width: '100%', padding: '12px 14px', background: 'rgba(0,0,0,0.3)', border: '1px solid var(--border-color)', borderRadius: '10px', color: 'white', fontSize: '15px', outline: 'none', transition: 'border-color 0.2s' }}
             onFocus={(e) => e.target.style.borderColor = 'var(--accent)'}
@@ -1329,10 +1391,32 @@ export default function App() {
       </button>
 
       {error && (
-        <div style={{ padding: '12px 14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px', color: '#fca5a5', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <AlertTriangle size={16} style={{ flexShrink: 0 }} /> {error}
+        <div style={{ padding: '12px 14px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px', color: '#fca5a5', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={16} style={{ flexShrink: 0 }} /> 
+            <span>{error}</span>
+          </div>
+          {(error.includes('NSE') || error.includes('Invalid symbol') || error.includes('market')) && (
+            <div style={{ fontSize: '11px', color: '#fcd34d', paddingLeft: '24px', lineHeight: 1.4 }}>
+              <strong>Notice:</strong> SignalCouncil currently supports Indian NSE market stocks and indices only (e.g., RELIANCE, TCS, INFY, NIFTY 50). US/global symbols like AAPL are not traded on the NSE.
+            </div>
+          )}
         </div>
       )}
+
+      {/* Prominent Market Scope Disclaimer */}
+      <div style={{
+        padding: '10px 14px',
+        background: 'rgba(245, 158, 11, 0.08)',
+        border: '1px solid rgba(245, 158, 11, 0.25)',
+        borderRadius: '8px',
+        fontSize: '11.5px',
+        color: '#fbbf24',
+        textAlign: 'center',
+        lineHeight: 1.4
+      }}>
+        <strong>Market Disclaimer:</strong> SignalCouncil currently supports Indian National Stock Exchange (NSE) equities and indices only (e.g. RELIANCE, TCS, INFY, NIFTY 50). Non-NSE instruments are not supported.
+      </div>
 
       <div style={{ fontSize: '12px', color: 'var(--text-secondary)', textAlign: 'center', lineHeight: 1.5 }}>
         Audits independent evidence families, validates out-of-sample historical edge, and enforces strict safety gating.
@@ -3076,6 +3160,28 @@ export default function App() {
             >
               ← New Test
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setApiInputVal(apiBaseUrl)
+                setApiTestStatus(null)
+                setShowApiModal(true)
+              }}
+              title="Configure API Server"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '6px 8px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer'
+              }}
+            >
+              <SettingsIcon size={14} />
+            </button>
           </div>
         </div>
 
@@ -3189,9 +3295,213 @@ export default function App() {
     }
   }
 
+  const testApiConnection = async (urlToTest: string) => {
+    setApiTestStatus({ testing: true, message: 'Pinging /health endpoint...' })
+    const cleaned = urlToTest.trim().replace(/\/+$/, '')
+    if (!cleaned) {
+      setApiTestStatus({ testing: false, success: false, message: 'URL cannot be empty' })
+      return
+    }
+    try {
+      const start = Date.now()
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 6000)
+      const res = await fetch(`${cleaned}/health`, { signal: controller.signal })
+      clearTimeout(timeoutId)
+      const latency = Date.now() - start
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}))
+        setApiTestStatus({
+          testing: false,
+          success: true,
+          message: `Connected! (${latency}ms • Status: ${data.status || 'healthy'})`
+        })
+      } else {
+        setApiTestStatus({
+          testing: false,
+          success: false,
+          message: `Server returned HTTP ${res.status}: ${res.statusText}`
+        })
+      }
+    } catch (err: any) {
+      setApiTestStatus({
+        testing: false,
+        success: false,
+        message: err.name === 'AbortError' ? 'Connection timed out (6s)' : (err.message || 'Connection failed')
+      })
+    }
+  }
+
+  const handleSaveApiUrl = async () => {
+    const cleaned = apiInputVal.trim().replace(/\/+$/, '')
+    await setApiBaseUrl(cleaned)
+    setApiBaseUrlState(cleaned || DEFAULT_API_URL)
+    setShowApiModal(false)
+  }
+
+  const handleResetApiUrl = async () => {
+    await setApiBaseUrl('')
+    setApiBaseUrlState(DEFAULT_API_URL)
+    setApiInputVal(DEFAULT_API_URL)
+    setApiTestStatus(null)
+  }
+
+  const renderApiSettingsModal = () => (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.75)',
+      backdropFilter: 'blur(6px)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 10000,
+      padding: '16px'
+    }}>
+      <div style={{
+        background: '#0f172a',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        borderRadius: '16px',
+        width: '100%',
+        maxWidth: '420px',
+        padding: '20px',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ padding: '6px', background: 'rgba(59, 130, 246, 0.15)', borderRadius: '8px' }}>
+              <SettingsIcon size={18} color="#60a5fa" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '15px', color: '#f8fafc' }}>API Server Configuration</div>
+              <div style={{ fontSize: '11px', color: '#94a3b8' }}>Cloud Run or local backend endpoint</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowApiModal(false)}
+            style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px', fontSize: '14px' }}
+          >
+            ✕
+          </button>
+        </div>
+
+        <div>
+          <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#cbd5e1', marginBottom: '6px' }}>
+            Backend API Base URL
+          </label>
+          <input
+            type="text"
+            value={apiInputVal}
+            onChange={(e) => {
+              setApiInputVal(e.target.value)
+              setApiTestStatus(null)
+            }}
+            placeholder="https://signal-council-api-xxx-uc.a.run.app"
+            style={{
+              width: '100%',
+              padding: '10px 12px',
+              background: 'rgba(255, 255, 255, 0.05)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '8px',
+              color: '#f8fafc',
+              fontSize: '13px',
+              outline: 'none',
+              boxSizing: 'border-box'
+            }}
+          />
+          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+            Default: <code style={{ color: '#94a3b8' }}>{DEFAULT_API_URL}</code>
+          </div>
+        </div>
+
+        {apiTestStatus && (
+          <div style={{
+            padding: '10px 12px',
+            borderRadius: '8px',
+            fontSize: '12px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: apiTestStatus.testing ? 'rgba(59, 130, 246, 0.1)' : (apiTestStatus.success ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)'),
+            border: `1px solid ${apiTestStatus.testing ? 'rgba(59, 130, 246, 0.25)' : (apiTestStatus.success ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.3)')}`,
+            color: apiTestStatus.testing ? '#93c5fd' : (apiTestStatus.success ? '#34d399' : '#f87171')
+          }}>
+            {apiTestStatus.testing && <RefreshCw size={14} className="spin" />}
+            {!apiTestStatus.testing && apiTestStatus.success && <CheckCircle2 size={14} color="#34d399" />}
+            {!apiTestStatus.testing && !apiTestStatus.success && <XCircle size={14} color="#f87171" />}
+            <span>{apiTestStatus.message}</span>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+          <button
+            type="button"
+            onClick={() => testApiConnection(apiInputVal)}
+            disabled={apiTestStatus?.testing}
+            style={{
+              padding: '8px 12px',
+              background: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '8px',
+              color: '#e2e8f0',
+              fontSize: '12px',
+              fontWeight: 500,
+              cursor: apiTestStatus?.testing ? 'not-allowed' : 'pointer'
+            }}
+          >
+            {apiTestStatus?.testing ? 'Testing...' : 'Test Connection'}
+          </button>
+
+          <div style={{ display: 'flex', gap: '8px' }}>
+            <button
+              type="button"
+              onClick={handleResetApiUrl}
+              style={{
+                padding: '8px 12px',
+                background: 'transparent',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                borderRadius: '8px',
+                color: '#94a3b8',
+                fontSize: '12px',
+                cursor: 'pointer'
+              }}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveApiUrl}
+              style={{
+                padding: '8px 16px',
+                background: '#3b82f6',
+                border: 'none',
+                borderRadius: '8px',
+                color: 'white',
+                fontSize: '12px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+
   return (
     <div style={{ width: '100%', height: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       {report ? renderSafeResultView() : renderInputView()}
+      {showApiModal && renderApiSettingsModal()}
     </div>
   )
 }
+
