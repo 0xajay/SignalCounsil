@@ -147,7 +147,11 @@ async def analyze_symbol(request: AnalyzeRequest):
     canonical_sym = resolve_symbol(clean_sym, market=request.market)
     logger.info(f"--- STARTING ANALYSIS FOR {clean_sym} (market={request.market}, provider_ticker={canonical_sym}) ---")
     if not validate_symbol(canonical_sym):
-        raise HTTPException(status_code=400, detail=f"Invalid symbol: {request.symbol} for market {request.market}")
+        mkt_hint = f" for market {request.market}" if request.market else ""
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid symbol: {request.symbol}{mkt_hint}. SignalCouncil currently supports Indian NSE market stocks and indices only (e.g. RELIANCE, TCS, INFY, NIFTY 50)."
+        )
         
     # 1. Fetch Market Data (Multi-Timeframe)
     try:
@@ -335,7 +339,11 @@ async def backtest_symbol(request: AnalyzeRequest):
     canonical_sym = resolve_symbol(clean_sym, market=request.market)
     logger.info(f"--- STARTING BACKTEST FOR {clean_sym} (market={request.market}, provider_ticker={canonical_sym}) ---")
     if not validate_symbol(canonical_sym):
-        raise HTTPException(status_code=400, detail=f"Invalid symbol: {request.symbol} for market {request.market}")
+        mkt_hint = f" for market {request.market}" if request.market else ""
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid symbol: {request.symbol}{mkt_hint}. SignalCouncil currently supports Indian NSE market stocks and indices only (e.g. RELIANCE, TCS, INFY, NIFTY 50)."
+        )
         
     try:
         raw_data = get_ohlcv(canonical_sym, interval=request.timeframe, limit=200) # Fetch more data for backtesting
